@@ -191,6 +191,11 @@ app.use(function (req, res) {
     res.status(404).send("Resource not found");
 })
 
-app.listen(5502, function () {
-    console.log("App started on port 5502");
-});
+// app.listen(5502, function () {
+//     console.log("App started on port 5502");
+// });
+
+const port = process.env.PORT || 5502;
+app.listen(port, function(){
+    console.log("App started on port " + port);
+})
