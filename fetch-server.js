@@ -197,7 +197,7 @@ app.post('/collections/orders', function(req,res,next){
     });
 });
 
-app.put('/collections/lessons/:id/updateSpaces', function (req, res, next) {
+app.put('/collections/lessons', function (req, res, next) {
     const lessonId = req.params.id;
 
     // Assuming you have a lessons collection in your database
