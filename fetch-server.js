@@ -187,6 +187,16 @@ app.put('/collections/:collectionName/:id'
         );
     });
 
+app.post('/collections/orders', function(req,res,next){
+    req.collection.insertOne(req.body, function (err,result){
+        if (err){
+            return next(err);
+
+        }
+        res.send(result);
+    });
+});
+
 app.use(function (req, res) {
     res.status(404).send("Resource not found");
 })
