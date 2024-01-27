@@ -201,7 +201,7 @@ app.put('/collections/:collectionName', function (req, res, next) {
     const lessonId = req.params.id;
 
     // Assuming you have a lessons collection in your database
-    const lessonsCollection = db.collection('lessons');
+    const lessonsCollection = db.collection('products');
 
     // Find the lesson by its ID
     lessonsCollection.findOne({ _id: new ObjectId(lessonId) }, function (err, lesson) {
