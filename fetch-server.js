@@ -197,28 +197,47 @@ app.post('/collections/orders', function(req,res,next){
     });
 });
 
+app.put('/collections/lessons/:id/updateSpaces', function (req, res, next) {
+    const lessonId = req.params.id;
 
-app.put('/collections/updateLessonSpaces', function (req, res, next) {
-    const lessonDetails = req.body;
+    // Assuming you have a lessons collection in your database
+    const lessonsCollection = db.collection('lessons');
 
-    // Assuming lessonDetails is an array of objects containing lesson details
-    lessonDetails.forEach(lesson => {
-        const lessonId = lesson.id;
+    // Find the lesson by its ID
+    lessonsCollection.findOne({ _id: new ObjectId(lessonId) }, function (err, lesson) {
+        if (err) {
+            return next(err);
+        }
 
-        // Update the lesson collection to decrement the spaces
-        req.collection.updateOne({ _id: new ObjectId(lessonId) },
-            { $inc: { spaces: -1 } },
-            { safe: true, multi: false }, function (err, result) {
+        if (!lesson) {
+            // Lesson not found
+            return res.status(404).send({ msg: 'Lesson not found' });
+        }
+
+        // Update the number of available spaces (decrement by 1 for example)
+        const updatedSpaces = lesson.spaces - 1;
+
+        // Update the lesson in the database with the new spaces value
+        lessonsCollection.updateOne(
+            { _id: new ObjectId(lessonId) },
+            { $set: { spaces: updatedSpaces } },
+            { safe: true, multi: false },
+            function (err, result) {
                 if (err) {
                     return next(err);
+                } else {
+                    if (result.matchedCount === 1) {
+                        // Success
+                        res.send({ msg: 'Spaces updated successfully' });
+                    } else {
+                        // Error updating spaces
+                        res.status(500).send({ msg: 'Error updating spaces' });
+                    }
                 }
             }
         );
     });
-
-    res.json({ msg: "success" });
 });
-
 
 
 app.use(function (req, res) {
