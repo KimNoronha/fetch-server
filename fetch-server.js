@@ -197,7 +197,7 @@ app.post('/collections/orders', function(req,res,next){
     });
 });
 
-app.put('/collections/products', function (req, res, next) {
+app.put('/collections/:collectionName', function (req, res, next) {
     const lessonId = req.params.id;
 
     // Assuming you have a lessons collection in your database
