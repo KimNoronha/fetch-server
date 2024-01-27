@@ -197,6 +197,30 @@ app.post('/collections/orders', function(req,res,next){
     });
 });
 
+
+app.put('/collections/updateLessonSpaces', function (req, res, next) {
+    const lessonDetails = req.body;
+
+    // Assuming lessonDetails is an array of objects containing lesson details
+    lessonDetails.forEach(lesson => {
+        const lessonId = lesson.id;
+
+        // Update the lesson collection to decrement the spaces
+        req.collection.updateOne({ _id: new ObjectId(lessonId) },
+            { $inc: { spaces: -1 } },
+            { safe: true, multi: false }, function (err, result) {
+                if (err) {
+                    return next(err);
+                }
+            }
+        );
+    });
+
+    res.json({ msg: "success" });
+});
+
+
+
 app.use(function (req, res) {
     res.status(404).send("Resource not found");
 })
