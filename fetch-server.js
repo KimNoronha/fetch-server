@@ -58,9 +58,9 @@ app.use('/images', express.static(path.join(__dirname, 'images')));
 // Middleware to handle requests for non-existent images
 app.use('/images', (req, res) => {
     res.status(404).send('Image not found');
-  });
+});
 
-  
+
 app.get("/", function (req, res, next) {
     res.send("Select a collection");
 });
@@ -99,31 +99,45 @@ app.post('/collections/:collectionName'
         });
     });
 
-    // app.put('/collections/products/:id', function (req, res, next) {
-    //     const lessonId = req.params.id;
-    //     const expectedSpaces = req.body.spaces;
-    //     const newSpaces = expectedSpaces - 1;
-    
-    
-    //     db.collection('products').findOneAndUpdate(
-    //         { _id: new ObjectId(lessonId), spaces: expectedSpaces },
-    //         { $set: { spaces: newSpaces } },
-    //         { returnDocument: 'after' } 
-    //     )
-    //     .then(updatedLesson => {
-    //         if (updatedLesson) {
-    //             console.log(`Spaces updated for lesson with id ${lessonId}: `, updatedLesson);
-    //             res.json({ success: true });
-    //         } else {
-    //             console.error(`Spaces update failed for lesson with id ${lessonId}. Lesson not found or concurrency issue.`);
-    //             res.status(400).json({ success: false, error: "Spaces update failed. Lesson not found or concurrency issue." });
-    //         }
-    //     })
-    //     .catch(error => {
-    //         console.error(`Error updating spaces for lesson with id ${lessonId}: `, error);
-    //         res.status(500).json({ success: false, error: error.message });
-    //     });
-    // });
+
+
+app.put('/collections/products/:id', function (req, res, next) {
+    const lessonId = req.params.id;
+
+    console.log(`Lesson ID: ${lessonId}`);
+
+    db.collection('products').findOne({ _id: new ObjectId(lessonId) })
+        .then(lesson => {
+            if (!lesson) {
+                // Lesson with the provided ID not found
+                console.error(`Lesson with id ${lessonId} not found.`);
+                return res.status(404).json({ success: false, error: "Lesson not found." });
+            }
+
+            // Decrement the spaces for the found lesson
+            const newSpaces = lesson.spaces - 1;
+
+            console.log(`New Spaces: ${newSpaces}`);
+
+            db.collection('products').updateOne(
+                { _id: new ObjectId(lessonId) },
+                { $set: { spaces: newSpaces } }
+            )
+                .then(() => {
+                    console.log(`Spaces updated for lesson with id ${lessonId}: spaces = ${newSpaces}`);
+                    res.json({ success: true });
+                })
+                .catch(error => {
+                    console.error(`Error updating spaces for lesson with id ${lessonId}: `, error);
+                    res.status(500).json({ success: false, error: error.message });
+                });
+        })
+        .catch(error => {
+            console.error(`Error finding lesson with id ${lessonId}: `, error);
+            res.status(500).json({ success: false, error: error.message });
+        });
+});
+
 
 
 app.delete('/collections/:collectionName/:id'
@@ -178,8 +192,8 @@ app.get('/search', async (req, res) => {
                 { location: new RegExp(searchTerm, 'i') }
             ]
         };
-        
-       // 'i' for case-insensitive
+
+        // 'i' for case-insensitive
         const searchResult = await lessonsCollection.find(query).toArray();
 
         res.json(searchResult);
