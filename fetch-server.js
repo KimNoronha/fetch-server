@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const morgan = require('morgan');
+
 const path = require("path");
 
 let propertiesReader = require("properties-reader");
@@ -9,8 +9,6 @@ let properties = propertiesReader(propertiesPath);
 
 
 let dbPprefix = properties.get("db.prefix");
-//URL-Encoding of User and PWD
-//for potential special characters
 let dbUsername = encodeURIComponent(properties.get("db.user"));
 let dbPwd = encodeURIComponent(properties.get("db.pwd"));
 let dbName = properties.get("db.dbName");
@@ -19,14 +17,15 @@ let dbParams = properties.get("db.params");
 const uri = dbPprefix + dbUsername + ":" + dbPwd + dbUrl + dbParams;
 
 
-const { MongoClient, ServerApiVersion , ObjectId } = require('mongodb');
-// const uri = "mongodb+srv://kimnoronha2001:<password>@cluster0.x1uat2z.mongodb.net/?retryWrites=true&w=majority";
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+
 const client = new MongoClient(uri, {
     serverApi: ServerApiVersion.v1
 });
 
+const morgan = require('morgan');
 
 client.connect()
     .then(() => {
@@ -38,48 +37,13 @@ client.connect()
 
 
 
-// let db;
-
-// const { MongoClient, ServerApiVersion } = require('mongodb');
-// // const uri = "mongodb+srv://kimnoronha2001:<password>@cluster0.x1uat2z.mongodb.net/?retryWrites=true&w=majority";
-
-// const client = new MongoClient(uri, {
-//     serverApi: {
-//       version: ServerApiVersion.v1,
-//       strict: true,
-//       deprecationErrors: true,
-//     }
-//   });
-
-// async function run() {
-//   try {
-//     // Connect the client to the server	(optional starting in v4.7)
-//     await client.connect();
-//     // Send a ping to confirm a successful connection
-//     await client.db(dbName).command({ ping: 1 });
-//     console.log("Pinged your deployment. You successfully connected to MongoDB!");
-//   } 
-//   finally {
-//     // Ensures that the client will close when you finish/error
-//     await client.close();
-//   }
-// }
-// run().catch(console.dir);
-
-
-
-
-
 
 let db = client.db(dbName);
-
 let app = express();
 app.set('json spaces', 3);
 
 app.use(cors());
-
 app.use(morgan("short"));
-
 app.use(express.json());
 
 
@@ -88,31 +52,22 @@ app.param('collectionName', function (req, res, next, collectionName) {
     return next();
 });
 
-app.use((req, res, next) => {
-    console.log(`[${new Date().toLocaleString()}] ${req.method} ${req.url}`);
-    next(); 
-});
+// Serve static files from 'images' directory
+app.use('/images', express.static(path.join(__dirname, 'images')));
 
+// Middleware to handle requests for non-existent images
+app.use('/images', (req, res) => {
+    res.status(404).send('Image not found');
+  });
+
+  
 app.get("/", function (req, res, next) {
     res.send("Select a collection");
 });
 
-app.get('/search', function(req, res, next) {
-    const query = req.query.query;
-    const regex = new RegExp(query, 'i'); // Case-insensitive search
-
-    req.collection.find({ $or: [{ title: regex }, { location: regex }] })
-        .toArray(function(err, results) {
-            if (err) {
-                return next(err);
-            }
-            res.send(results);
-        });
-});
-
-app.get("/collections/:collectionName", function(req,res, next){
-    req.collection.find({}).toArray(function(err, results){
-        if(err){
+app.get("/collections/:collectionName", function (req, res, next) {
+    req.collection.find({}).toArray(function (err, results) {
+        if (err) {
             return next(err);
         }
         res.send(results);
@@ -124,37 +79,18 @@ app.get("/collections/:collectionName", function(req,res, next){
 
 
 
-// app.get('/collections/:collectionName/:max/:sortAspect/:sortAscDesc'
-//     , function (req, res, next) {
-//         // TODO: Validate params
-//         var max = parseInt(req.params.max, 10); // base 10
-//         let sortDirection = 1;
-//         if (req.params.sortAscDesc === "desc") {
-//             sortDirection = -1;
-//         }
-//         req.collection.find({}, {
-//             limit: max, sort: [[req.params.sortAspect,
-//                 sortDirection]]
-//         }).toArray(function (err, results) {
-//             if (err) {
-//                 return next(err);
-//             }
-//             res.send(results);
-//         });
-//     });
-
 app.get('/collections/:collectionName/:id', function (req, res, next) {
-        req.collection.findOne({ _id: new ObjectId(req.params.id) }, function (err, results) {
-            if (err) {
-                return next(err);
-            }
-            res.send(results);
-        });
+    req.collection.findOne({ _id: new ObjectId(req.params.id) }, function (err, results) {
+        if (err) {
+            return next(err);
+        }
+        res.send(results);
     });
+});
 
 app.post('/collections/:collectionName'
     , function (req, res, next) {
-        // TODO: Validate req.body
+
         req.collection.insertOne(req.body, function (err, results) {
             if (err) {
                 return next(err);
@@ -163,55 +99,32 @@ app.post('/collections/:collectionName'
         });
     });
 
-
-    app.put('/collections/:collectionName/:id', function (req, res, next) {
-        const lessonId = req.params.id;
+    // app.put('/collections/products/:id', function (req, res, next) {
+    //     const lessonId = req.params.id;
+    //     const expectedSpaces = req.body.spaces;
+    //     const newSpaces = expectedSpaces - 1;
     
-        console.log('Lesson ID:', lessonId); // Log the lessonId to check if it's correct
-
-        const lessonsCollection = db.collection('products');
     
-        
-        lessonsCollection.findOne({ _id: ObjectId(lessonId)  }, function (err, lesson) {
-            console.log('Lesson:', lesson); // Log the retrieved lesson
+    //     db.collection('products').findOneAndUpdate(
+    //         { _id: new ObjectId(lessonId), spaces: expectedSpaces },
+    //         { $set: { spaces: newSpaces } },
+    //         { returnDocument: 'after' } 
+    //     )
+    //     .then(updatedLesson => {
+    //         if (updatedLesson) {
+    //             console.log(`Spaces updated for lesson with id ${lessonId}: `, updatedLesson);
+    //             res.json({ success: true });
+    //         } else {
+    //             console.error(`Spaces update failed for lesson with id ${lessonId}. Lesson not found or concurrency issue.`);
+    //             res.status(400).json({ success: false, error: "Spaces update failed. Lesson not found or concurrency issue." });
+    //         }
+    //     })
+    //     .catch(error => {
+    //         console.error(`Error updating spaces for lesson with id ${lessonId}: `, error);
+    //         res.status(500).json({ success: false, error: error.message });
+    //     });
+    // });
 
-            if (err) {
-                return next(err);
-            }
-    
-            if (!lesson) {
-                return res.status(404).send({ msg: 'Lesson not found' });
-            }
-    
-            
-            const updatedSpaces = lesson.spaces - 1;
-            console.log('Updated Spaces:', updatedSpaces); // Log the updatedSpaces value
-
-            // Update the lesson in the database with the new spaces value
-            lessonsCollection.updateOne(
-                {  _id: ObjectId(lessonId)  },
-                { $set: { spaces: updatedSpaces } },
-                { safe: true, multi: false },
-                function (err, result) {
-                    if (err) {
-                        return next(err);
-                    } else {
-                        console.log('Update Result:', result); // Log the result of the update operation
-
-                        if (result.matchedCount === 1) {
-                            // Success
-                            res.send({ msg: 'Spaces updated successfully' });
-                        } else {
-                            // Error updating spaces
-                            res.status(500).send({ msg: 'Error updating spaces' });
-                        }
-                    }
-                }
-            );
-        });
-    });
-
-    
 
 app.delete('/collections/:collectionName/:id'
     , function (req, res, next) {
@@ -228,7 +141,7 @@ app.delete('/collections/:collectionName/:id'
 
 app.put('/collections/:collectionName/:id'
     , function (req, res, next) {
-        // TODO: Validate req.body
+
         req.collection.updateOne({ _id: new ObjectId(req.params.id) },
             { $set: req.body },
             { safe: true, multi: false }, function (err, result) {
@@ -241,9 +154,9 @@ app.put('/collections/:collectionName/:id'
         );
     });
 
-app.post('/collections/orders', function(req,res,next){
-    req.collection.insertOne(req.body, function (err,result){
-        if (err){
+app.post('/collections/orders', function (req, res, next) {
+    req.collection.insertOne(req.body, function (err, result) {
+        if (err) {
             return next(err);
 
         }
@@ -251,16 +164,39 @@ app.post('/collections/orders', function(req,res,next){
     });
 });
 
+app.get('/search', async (req, res) => {
+    try {
+        const searchTerm = req.query.term;
+        console.log("Search Term:", searchTerm);
+        const lessonsCollection = client.db(dbName).collection("products");
+        console.log("Database Collection:", lessonsCollection.collectionName); // Add this log statement
+
+        // Using regex for search
+        const query = {
+            $or: [
+                { title: new RegExp(searchTerm, 'i') },
+                { location: new RegExp(searchTerm, 'i') }
+            ]
+        };
+        
+       // 'i' for case-insensitive
+        const searchResult = await lessonsCollection.find(query).toArray();
+
+        res.json(searchResult);
+    } catch (error) {
+        console.error("Error during search:", error);
+        res.status(500).send("Internal Server Error");
+    }
+});
 
 app.use(function (req, res) {
     res.status(404).send("Resource not found");
 })
 
-// app.listen(5502, function () {
-//     console.log("App started on port 5502");
-// });
 
 const port = process.env.PORT || 5502;
-app.listen(port, function(){
+app.listen(port, function () {
     console.log("App started on port " + port);
 })
+
+
