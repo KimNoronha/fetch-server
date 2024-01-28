@@ -88,10 +88,26 @@ app.param('collectionName', function (req, res, next, collectionName) {
     return next();
 });
 
-
+app.use((req, res, next) => {
+    console.log(`[${new Date().toLocaleString()}] ${req.method} ${req.url}`);
+    next(); 
+});
 
 app.get("/", function (req, res, next) {
     res.send("Select a collection");
+});
+
+app.get('/search', function(req, res, next) {
+    const query = req.query.query;
+    const regex = new RegExp(query, 'i'); // Case-insensitive search
+
+    req.collection.find({ $or: [{ title: regex }, { location: regex }] })
+        .toArray(function(err, results) {
+            if (err) {
+                return next(err);
+            }
+            res.send(results);
+        });
 });
 
 app.get("/collections/:collectionName", function(req,res, next){
@@ -102,41 +118,30 @@ app.get("/collections/:collectionName", function(req,res, next){
         res.send(results);
 
     });
-    // res.send("The service has been called");
-    // res.json({result: "Ok"});
 
 });
 
 
-// app.get('/collections/:collectionName'
-// , function(req, res, next) {
-//  req.collection.find({}, {limit: 3, sort: [["price", -1]]}).toArray(function(err, results) {
-//  if (err) {
-//  return next(err);
-//  }
-//  res.send(results);
-//  });
-// });
 
 
-app.get('/collections/:collectionName/:max/:sortAspect/:sortAscDesc'
-    , function (req, res, next) {
-        // TODO: Validate params
-        var max = parseInt(req.params.max, 10); // base 10
-        let sortDirection = 1;
-        if (req.params.sortAscDesc === "desc") {
-            sortDirection = -1;
-        }
-        req.collection.find({}, {
-            limit: max, sort: [[req.params.sortAspect,
-                sortDirection]]
-        }).toArray(function (err, results) {
-            if (err) {
-                return next(err);
-            }
-            res.send(results);
-        });
-    });
+// app.get('/collections/:collectionName/:max/:sortAspect/:sortAscDesc'
+//     , function (req, res, next) {
+//         // TODO: Validate params
+//         var max = parseInt(req.params.max, 10); // base 10
+//         let sortDirection = 1;
+//         if (req.params.sortAscDesc === "desc") {
+//             sortDirection = -1;
+//         }
+//         req.collection.find({}, {
+//             limit: max, sort: [[req.params.sortAspect,
+//                 sortDirection]]
+//         }).toArray(function (err, results) {
+//             if (err) {
+//                 return next(err);
+//             }
+//             res.send(results);
+//         });
+//     });
 
 app.get('/collections/:collectionName/:id', function (req, res, next) {
         req.collection.findOne({ _id: new ObjectId(req.params.id) }, function (err, results) {
@@ -158,6 +163,55 @@ app.post('/collections/:collectionName'
         });
     });
 
+
+    app.put('/collections/:collectionName/:id', function (req, res, next) {
+        const lessonId = req.params.id;
+    
+        console.log('Lesson ID:', lessonId); // Log the lessonId to check if it's correct
+
+        const lessonsCollection = db.collection('products');
+    
+        
+        lessonsCollection.findOne({ _id: ObjectId(lessonId)  }, function (err, lesson) {
+            console.log('Lesson:', lesson); // Log the retrieved lesson
+
+            if (err) {
+                return next(err);
+            }
+    
+            if (!lesson) {
+                return res.status(404).send({ msg: 'Lesson not found' });
+            }
+    
+            
+            const updatedSpaces = lesson.spaces - 1;
+            console.log('Updated Spaces:', updatedSpaces); // Log the updatedSpaces value
+
+            // Update the lesson in the database with the new spaces value
+            lessonsCollection.updateOne(
+                {  _id: ObjectId(lessonId)  },
+                { $set: { spaces: updatedSpaces } },
+                { safe: true, multi: false },
+                function (err, result) {
+                    if (err) {
+                        return next(err);
+                    } else {
+                        console.log('Update Result:', result); // Log the result of the update operation
+
+                        if (result.matchedCount === 1) {
+                            // Success
+                            res.send({ msg: 'Spaces updated successfully' });
+                        } else {
+                            // Error updating spaces
+                            res.status(500).send({ msg: 'Error updating spaces' });
+                        }
+                    }
+                }
+            );
+        });
+    });
+
+    
 
 app.delete('/collections/:collectionName/:id'
     , function (req, res, next) {
@@ -194,48 +248,6 @@ app.post('/collections/orders', function(req,res,next){
 
         }
         res.send(result);
-    });
-});
-
-app.put('/collections/:collectionName', function (req, res, next) {
-    const lessonId = req.params.id;
-
-    // Assuming you have a lessons collection in your database
-    const lessonsCollection = db.collection('products');
-
-    // Find the lesson by its ID
-    lessonsCollection.findOne({ _id: new ObjectId(lessonId) }, function (err, lesson) {
-        if (err) {
-            return next(err);
-        }
-
-        if (!lesson) {
-            // Lesson not found
-            return res.status(404).send({ msg: 'Lesson not found' });
-        }
-
-        // Update the number of available spaces (decrement by 1 for example)
-        const updatedSpaces = lesson.spaces - 1;
-
-        // Update the lesson in the database with the new spaces value
-        lessonsCollection.updateOne(
-            { _id: new ObjectId(lessonId) },
-            { $set: { spaces: updatedSpaces } },
-            { safe: true, multi: false },
-            function (err, result) {
-                if (err) {
-                    return next(err);
-                } else {
-                    if (result.matchedCount === 1) {
-                        // Success
-                        res.send({ msg: 'Spaces updated successfully' });
-                    } else {
-                        // Error updating spaces
-                        res.status(500).send({ msg: 'Error updating spaces' });
-                    }
-                }
-            }
-        );
     });
 });
 
